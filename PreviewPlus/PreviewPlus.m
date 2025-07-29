@@ -6,39 +6,9 @@
 
 @interface PQE_PVDocumentController : NSObject
 - (NSString *)typeIdentifierOfFileURL:(NSURL *)url;
-- (id)documentForURL:(NSURL *)url;
-- (id)frontmostWindowController;
 @end
 
 @interface PQE_PVWindowController : NSObject
-@end
-
-@interface NSObject (PreviewPlusForwardDeclarations)
-- (BOOL)isCanceled;
-- (id)existingWindowControllers;
-- (NSString *)spotlightSearchString;
-- (NSInteger)openingMode;
-- (id)windowController;
-- (void)setWindowController:(id)controller;
-- (id)containersOpened;
-- (BOOL)displayWindow;
-- (id)addURLErrors;
-- (id)parentWindowController;
-- (BOOL)isWindowLoaded;
-- (id)window;
-- (void)setCurrentMediaContainer:(id)container;
-- (void)showWindow:(id)sender;
-- (void)searchEvent:(NSString *)searchString;
-- (void)willBeginAddingFiles;
-- (void)didEndAddingFiles;
-- (id)metaUndoManager;
-- (id)addFileURL:(NSURL *)url ofType:(NSString *)type error:(NSError **)error;
-- (id)mediaContainers;
-- (void)showWindowOnMainThread;
-- (NSInteger)addedFileCount;
-- (void)disableUndoRegistration;
-- (void)enableUndoRegistration;
-+ (void)addFilePresenter:(id)presenter;
 @end
 
 @implementation PQE_PVDocumentController
@@ -57,8 +27,11 @@
 		return originalResult;
 	}
 	
-	NSMutableSet *extendedTypes = [NSMutableSet setWithArray:[(NSSet *)originalResult allObjects]];
+	NSMutableSet *extendedTypes = [NSMutableSet set];
+	NSSet *originalSet = (NSSet *)originalResult;
+	[extendedTypes addObjectsFromArray:[originalSet allObjects]];
 	[extendedTypes addObjectsFromArray:[[self class] supportedTypes]];
+	
 	return [extendedTypes copy];
 }
 
@@ -69,94 +42,35 @@
 }
 
 - (BOOL)canOpenDocumentAtURL:(id)url typeID:(id *)typeID {
+	// Get the type identifier for this URL
 	NSString *typeIdentifier = [self typeIdentifierOfFileURL:url];
+	
+	// Set the type ID if requested
 	if (typeID && typeIdentifier) {
 		*typeID = typeIdentifier;
 	}
 	
+	// Check if it's one of our supported types
 	if (typeIdentifier && [[[self class] supportedTypes] containsObject:typeIdentifier]) {
 		return YES;
 	}
 	
+	// Otherwise let the original implementation handle it
 	return ZKOrig(BOOL, url, typeID);
 }
 
 - (void)addDocumentAtURL:(NSURL *)url ofType:(NSString *)type toLoadGroup:(id)loadGroup {
-	/* Unfortunately, we have to replace this entire method.
-	The original implementation reads the _allReadableTypes instance variable to check if a type is supported.
-	Attempting to hook and modify this ivar led to memory corruption and crashes. */
-	
-	if ([loadGroup isCanceled]) {
-		return;
-	}
-	
-	// Handle existing document
-	id existingDocument = [self documentForURL:url];
-	if (existingDocument) {
-		id windowController = [existingDocument parentWindowController];
-		if (windowController && ![[loadGroup existingWindowControllers] containsObject:windowController]) {
-			[[loadGroup existingWindowControllers] addObject:windowController];
-			if ([windowController isWindowLoaded] && [[windowController window] isVisible]) {
-				[windowController setCurrentMediaContainer:existingDocument];
-				[windowController showWindow:existingDocument];
-				if ([loadGroup spotlightSearchString]) {
-					[windowController searchEvent:[loadGroup spotlightSearchString]];
-				}
-			}
-		}
-		return;
-	}
-	
-	// Check if type is supported
-	if (![[[self class] supportedTypes] containsObject:type]) {
-		NSSet *allTypes = [self allReadableTypes];
-		if (![allTypes containsObject:type]) {
-			return;
-		}
-	}
-	
-	// Get or create window controller
-	id windowController = [loadGroup windowController];
-	BOOL shouldShowWindow = NO;
-	
-	if ([loadGroup openingMode] == 2 && !windowController) {
-		Class pvWindowControllerClass = NSClassFromString(@"PVWindowController");
-		if (pvWindowControllerClass) {
-			windowController = [[pvWindowControllerClass alloc] initWithWindowNibName:@"PVDocument"];
-			shouldShowWindow = YES;
-		} else {
-			windowController = [self frontmostWindowController];
-			[loadGroup setWindowController:windowController];
-		}
-		[windowController willBeginAddingFiles];
-	}
-	
-	// Add the file
-	[[windowController metaUndoManager] disableUndoRegistration];
-	NSError *error = nil;
-	id container = [windowController addFileURL:url ofType:type error:&error];
-	[[windowController metaUndoManager] enableUndoRegistration];
-	
-	if (container) {
-		[[loadGroup containersOpened] addObject:container];
-		[NSFileCoordinator addFilePresenter:container];
+	if ([[[self class] supportedTypes] containsObject:type]) {
+		// The original implementation will use the _allReadableTypes ivar to determine if a type is supported.
+
+		NSSet *originalIvar = ZKHookIvar(self, NSSet *, "_allReadableTypes");
+		ZKHookIvar(self, NSSet *, "_allReadableTypes") = [NSSet setWithObject:type];
+		ZKOrig(void, url, type, loadGroup);
+		ZKHookIvar(self, NSSet *, "_allReadableTypes") = originalIvar;
 		
-		if (shouldShowWindow) {
-			[windowController didEndAddingFiles];
-			if ([[windowController mediaContainers] count] > 0 && [loadGroup displayWindow]) {
-				[windowController showWindowOnMainThread];
-			}
-		} else if ([windowController addedFileCount] >= 11 && 
-				   [loadGroup displayWindow] && 
-				   ![[windowController window] isVisible]) {
-			[windowController showWindowOnMainThread];
-		}
-		
-		if ([loadGroup spotlightSearchString]) {
-			[windowController searchEvent:[loadGroup spotlightSearchString]];
-		}
-	} else if (error) {
-		[[loadGroup addURLErrors] addObject:error];
+	} else {
+		// For native types, just pass through normally
+		ZKOrig(void, url, type, loadGroup);
 	}
 }
 
@@ -182,6 +96,8 @@
 
 static void registerUTIHandlers() {
 	NSString *previewBundleID = @"com.apple.Preview";
+	
+	// Map of file extensions to their UTIs
 	NSDictionary *utiMappings = @{
 		@"webp": @"org.webmproject.webp",
 		@"avif": @"public.avif",
@@ -191,12 +107,16 @@ static void registerUTIHandlers() {
 		@"markdown": @"net.daringfireball.markdown"
 	};
 	
+	// Register Preview as the default handler for each UTI
 	for (NSString *extension in utiMappings) {
 		NSString *uti = utiMappings[extension];
+		
+		// Set Preview as the default handler for the UTI
 		LSSetDefaultRoleHandlerForContentType((__bridge CFStringRef)uti,
 											  kLSRolesViewer | kLSRolesEditor,
 											  (__bridge CFStringRef)previewBundleID);
 		
+		// Also register by extension using dynamic UTI creation
 		CFStringRef dynamicUTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, 
 																	   (__bridge CFStringRef)extension, 
 																	   kUTTypeData);
@@ -214,6 +134,8 @@ static void registerUTIHandlers() {
 + (void)load {
 	ZKSwizzle(PQE_PVDocumentController, PVDocumentController);
 	ZKSwizzle(PQE_PVWindowController, PVWindowController);
+	
+	// Register UTI handlers to make Preview the default app for these file types
 	registerUTIHandlers();
 }
 
