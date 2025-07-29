@@ -17,6 +17,11 @@ mkdir -p "${BUNDLE_DIR}/Contents/MacOS"
 # Copy Info.plist
 cp Info.plist "${BUNDLE_DIR}/Contents/Info.plist"
 
+# Copy Resources directory if it exists
+if [ -d "Resources" ]; then
+    cp -R Resources "${BUNDLE_DIR}/Contents/"
+fi
+
 # Update Info.plist with automatic values using defaults
 defaults write "${BUNDLE_DIR}/Contents/Info" CFBundleVersion "$VERSION"
 defaults write "${BUNDLE_DIR}/Contents/Info" CFBundleShortVersionString "$VERSION"

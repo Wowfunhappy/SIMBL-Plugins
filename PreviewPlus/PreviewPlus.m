@@ -16,7 +16,8 @@
 + (NSArray *)supportedTypes {
 	return @[
 		@"org.webmproject.webp", @"com.google.webp", @"public.webp",
-		@"public.avif", @"public.heic", @"public.heif",
+		@"public.heic", @"public.heif", @"public.avif",
+		@"org.bellard.bpg", @"public.bpg",
 		@"net.daringfireball.markdown", @"public.markdown"
 	];
 }
@@ -69,7 +70,6 @@
 		ZKHookIvar(self, NSSet *, "_allReadableTypes") = originalIvar;
 		
 	} else {
-		// For native types, just pass through normally
 		ZKOrig(void, url, type, loadGroup);
 	}
 }
@@ -100,9 +100,10 @@ static void registerUTIHandlers() {
 	// Map of file extensions to their UTIs
 	NSDictionary *utiMappings = @{
 		@"webp": @"org.webmproject.webp",
-		@"avif": @"public.avif",
 		@"heic": @"public.heic",
 		@"heif": @"public.heif",
+		@"avif": @"public.avif",
+		@"bpg": @"org.bellard.bpg",
 		@"md": @"net.daringfireball.markdown",
 		@"markdown": @"net.daringfireball.markdown"
 	};
@@ -112,18 +113,24 @@ static void registerUTIHandlers() {
 		NSString *uti = utiMappings[extension];
 		
 		// Set Preview as the default handler for the UTI
-		LSSetDefaultRoleHandlerForContentType((__bridge CFStringRef)uti,
-											  kLSRolesViewer | kLSRolesEditor,
-											  (__bridge CFStringRef)previewBundleID);
+		LSSetDefaultRoleHandlerForContentType(
+			(__bridge CFStringRef)uti,
+			kLSRolesViewer | kLSRolesEditor,
+			(__bridge CFStringRef)previewBundleID
+		);
 		
 		// Also register by extension using dynamic UTI creation
-		CFStringRef dynamicUTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, 
-																	   (__bridge CFStringRef)extension, 
-																	   kUTTypeData);
+		CFStringRef dynamicUTI = UTTypeCreatePreferredIdentifierForTag(
+			kUTTagClassFilenameExtension, 
+			(__bridge CFStringRef)extension, 
+			kUTTypeData
+		);
 		if (dynamicUTI) {
-			LSSetDefaultRoleHandlerForContentType(dynamicUTI,
-												  kLSRolesViewer | kLSRolesEditor,
-												  (__bridge CFStringRef)previewBundleID);
+			LSSetDefaultRoleHandlerForContentType(
+				dynamicUTI,
+				kLSRolesViewer | kLSRolesEditor,
+				(__bridge CFStringRef)previewBundleID
+			);
 			CFRelease(dynamicUTI);
 		}
 	}
@@ -135,7 +142,6 @@ static void registerUTIHandlers() {
 	ZKSwizzle(PQE_PVDocumentController, PVDocumentController);
 	ZKSwizzle(PQE_PVWindowController, PVWindowController);
 	
-	// Register UTI handlers to make Preview the default app for these file types
 	registerUTIHandlers();
 }
 
