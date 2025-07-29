@@ -2,9 +2,9 @@
 
 set -e
 
-# PreviewQuickLookExtender build script
+# PreviewPlus build script
 
-PLUGIN_NAME="PreviewQuickLookExtender"
+PLUGIN_NAME="PreviewPlus"
 VERSION=$(date +%Y.%m.%d)
 BUILD_DIR="./build"
 BUNDLE_DIR="${BUILD_DIR}/${PLUGIN_NAME}.bundle"
@@ -34,15 +34,15 @@ clang -c -framework Cocoa \
       -framework Foundation \
       -fobjc-arc \
       -Wno-deprecated-declarations \
-      -o "$BUILD_DIR/PreviewQuickLookExtender.o" \
-      PreviewQuickLookExtender.m
+      -o "$BUILD_DIR/PreviewPlus.o" \
+      PreviewPlus.m
 
 # Link everything together
 clang -framework Cocoa \
       -framework Foundation \
       -bundle \
       -o "${BUNDLE_DIR}/Contents/MacOS/${PLUGIN_NAME}" \
-      "$BUILD_DIR/PreviewQuickLookExtender.o" \
+      "$BUILD_DIR/PreviewPlus.o" \
       "$BUILD_DIR/ZKSwizzle.o"
 
 # Check if compilation was successful

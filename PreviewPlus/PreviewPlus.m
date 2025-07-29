@@ -87,7 +87,7 @@
 
 @end
 
-@implementation NSObject (PreviewQuickLookExtender)
+@implementation NSObject (PreviewPlus)
 
 + (void)load {
 	ZKSwizzle(PQE_PVDocumentController, PVDocumentController);
