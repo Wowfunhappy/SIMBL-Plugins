@@ -1,6 +1,7 @@
 #import <Cocoa/Cocoa.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
+#import <CoreServices/CoreServices.h>
 #import "ZKSwizzle/ZKSwizzle.h"
 
 @interface PQE_PVDocumentController : NSObject
@@ -87,11 +88,49 @@
 
 @end
 
+static void registerUTIHandlers() {
+	NSString *previewBundleID = @"com.apple.Preview";
+	
+	// Map of file extensions to their UTIs
+	NSDictionary *utiMappings = @{
+		@"webp": @"org.webmproject.webp",
+		@"avif": @"public.avif",
+		@"heic": @"public.heic",
+		@"heif": @"public.heif",
+		@"md": @"net.daringfireball.markdown",
+		@"markdown": @"net.daringfireball.markdown"
+	};
+	
+	// Register Preview as the default handler for each UTI
+	for (NSString *extension in utiMappings) {
+		NSString *uti = utiMappings[extension];
+		
+		// Set Preview as the default handler for the UTI
+		LSSetDefaultRoleHandlerForContentType((__bridge CFStringRef)uti,
+											  kLSRolesViewer | kLSRolesEditor,
+											  (__bridge CFStringRef)previewBundleID);
+		
+		// Also register by extension using dynamic UTI creation
+		CFStringRef dynamicUTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, 
+																	   (__bridge CFStringRef)extension, 
+																	   kUTTypeData);
+		if (dynamicUTI) {
+			LSSetDefaultRoleHandlerForContentType(dynamicUTI,
+												  kLSRolesViewer | kLSRolesEditor,
+												  (__bridge CFStringRef)previewBundleID);
+			CFRelease(dynamicUTI);
+		}
+	}
+}
+
 @implementation NSObject (PreviewPlus)
 
 + (void)load {
 	ZKSwizzle(PQE_PVDocumentController, PVDocumentController);
 	ZKSwizzle(PQE_PVWindowController, PVWindowController);
+	
+	// Register UTI handlers to make Preview the default app for these file types
+	registerUTIHandlers();
 }
 
 @end
