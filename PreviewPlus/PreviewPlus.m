@@ -11,20 +11,14 @@
 @interface PQE_PVWindowController : NSObject
 @end
 
-// Consolidated UTI configuration
+// Consolidated UTI configuration loaded from plist
 static NSDictionary *getUTIConfiguration() {
 	static NSDictionary *config = nil;
 	static dispatch_once_t onceToken;
 	dispatch_once(&onceToken, ^{
-		config = @{
-			@"webp": @[@"org.webmproject.webp", @"com.google.webp", @"public.webp"],
-			@"heic": @[@"public.heic"],
-			@"heif": @[@"public.heif"],
-			@"avif": @[@"public.avif"],
-			@"bpg": @[@"org.bellard.bpg", @"public.bpg"],
-			@"md": @[@"net.daringfireball.markdown", @"public.markdown"],
-			@"markdown": @[@"net.daringfireball.markdown", @"public.markdown"]
-		};
+		NSBundle *bundle = [NSBundle bundleForClass:[PQE_PVDocumentController class]];
+		NSString *plistPath = [bundle pathForResource:@"UTIConfiguration" ofType:@"plist"];
+		config = [NSDictionary dictionaryWithContentsOfFile:plistPath];
 	});
 	return config;
 }

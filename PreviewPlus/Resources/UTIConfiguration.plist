@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>webp</key>
+	<array>
+		<string>org.webmproject.webp</string>
+		<string>com.google.webp</string>
+		<string>public.webp</string>
+	</array>
+	<key>heic</key>
+	<array>
+		<string>public.heic</string>
+	</array>
+	<key>heif</key>
+	<array>
+		<string>public.heif</string>
+	</array>
+	<key>avif</key>
+	<array>
+		<string>public.avif</string>
+	</array>
+	<key>bpg</key>
+	<array>
+		<string>org.bellard.bpg</string>
+		<string>public.bpg</string>
+	</array>
+	<key>md</key>
+	<array>
+		<string>net.daringfireball.markdown</string>
+		<string>public.markdown</string>
+	</array>
+	<key>markdown</key>
+	<array>
+		<string>net.daringfireball.markdown</string>
+		<string>public.markdown</string>
+	</array>
+</dict>
+</plist>
