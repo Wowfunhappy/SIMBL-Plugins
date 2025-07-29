@@ -11,15 +11,38 @@
 @interface PQE_PVWindowController : NSObject
 @end
 
+// Consolidated UTI configuration
+static NSDictionary *getUTIConfiguration() {
+	static NSDictionary *config = nil;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		config = @{
+			@"webp": @[@"org.webmproject.webp", @"com.google.webp", @"public.webp"],
+			@"heic": @[@"public.heic"],
+			@"heif": @[@"public.heif"],
+			@"avif": @[@"public.avif"],
+			@"bpg": @[@"org.bellard.bpg", @"public.bpg"],
+			@"md": @[@"net.daringfireball.markdown", @"public.markdown"],
+			@"markdown": @[@"net.daringfireball.markdown", @"public.markdown"]
+		};
+	});
+	return config;
+}
+
 @implementation PQE_PVDocumentController
 
 + (NSArray *)supportedTypes {
-	return @[
-		@"org.webmproject.webp", @"com.google.webp", @"public.webp",
-		@"public.heic", @"public.heif", @"public.avif",
-		@"org.bellard.bpg", @"public.bpg",
-		@"net.daringfireball.markdown", @"public.markdown"
-	];
+	static NSArray *types = nil;
+	static dispatch_once_t onceToken;
+	dispatch_once(&onceToken, ^{
+		NSMutableSet *uniqueTypes = [NSMutableSet set];
+		NSDictionary *config = getUTIConfiguration();
+		for (NSArray *utis in [config allValues]) {
+			[uniqueTypes addObjectsFromArray:utis];
+		}
+		types = [uniqueTypes allObjects];
+	});
+	return types;
 }
 
 - (id)readableQuickLookTypes {
@@ -96,28 +119,20 @@
 
 static void registerUTIHandlers() {
 	NSString *previewBundleID = @"com.apple.Preview";
-	
-	// Map of file extensions to their UTIs
-	NSDictionary *utiMappings = @{
-		@"webp": @"org.webmproject.webp",
-		@"heic": @"public.heic",
-		@"heif": @"public.heif",
-		@"avif": @"public.avif",
-		@"bpg": @"org.bellard.bpg",
-		@"md": @"net.daringfireball.markdown",
-		@"markdown": @"net.daringfireball.markdown"
-	};
+	NSDictionary *config = getUTIConfiguration();
 	
 	// Register Preview as the default handler for each UTI
-	for (NSString *extension in utiMappings) {
-		NSString *uti = utiMappings[extension];
+	for (NSString *extension in config) {
+		NSArray *utis = config[extension];
 		
-		// Set Preview as the default handler for the UTI
-		LSSetDefaultRoleHandlerForContentType(
-			(__bridge CFStringRef)uti,
-			kLSRolesViewer | kLSRolesEditor,
-			(__bridge CFStringRef)previewBundleID
-		);
+		// Register each UTI for this extension
+		for (NSString *uti in utis) {
+			LSSetDefaultRoleHandlerForContentType(
+				(__bridge CFStringRef)uti,
+				kLSRolesViewer | kLSRolesEditor,
+				(__bridge CFStringRef)previewBundleID
+			);
+		}
 		
 		// Also register by extension using dynamic UTI creation
 		CFStringRef dynamicUTI = UTTypeCreatePreferredIdentifierForTag(
