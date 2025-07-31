@@ -35,5 +35,9 @@
 		<string>net.daringfireball.markdown</string>
 		<string>public.markdown</string>
 	</array>
+	<key>svg</key>
+	<array>
+		<string>public.svg-image</string>
+	</array>
 </dict>
 </plist>
