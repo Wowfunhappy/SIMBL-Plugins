@@ -130,39 +130,53 @@ static NSDictionary *getUTIConfiguration() {
 
 // Helper function to create transform for EXIF orientation
 // This corresponds to sub_10005ee44 in the assembly
-static CGAffineTransform createTransformForEXIFOrientation(NSInteger orientation, CGFloat width, CGFloat height) {
+CGAffineTransform createTransformForEXIF(CGFloat width, CGFloat height, int orientation) {
 	CGAffineTransform transform = CGAffineTransformIdentity;
 	
 	switch (orientation) {
 		case 1: // Normal
+			// Identity transform (no changes needed)
 			break;
 			
 		case 2: // Flip horizontal
-			transform = CGAffineTransformMake(-1, 0, 0, 1, width, 0);
+			transform = CGAffineTransformTranslate(transform, width, 0);
+			transform = CGAffineTransformScale(transform, -1.0, 1.0);
 			break;
 			
-		case 3: // Rotate 180
-			transform = CGAffineTransformMake(-1, 0, 0, -1, width, height);
+		case 3: // Rotate 180°
+			transform = CGAffineTransformTranslate(transform, width, 0);
+			transform = CGAffineTransformScale(transform, -1.0, 1.0);
+			transform = CGAffineTransformTranslate(transform, 0, height);
+			transform = CGAffineTransformScale(transform, 1.0, -1.0);
 			break;
 			
 		case 4: // Flip vertical
-			transform = CGAffineTransformMake(1, 0, 0, -1, 0, height);
+			transform = CGAffineTransformTranslate(transform, 0, height);
+			transform = CGAffineTransformScale(transform, 1.0, -1.0);
 			break;
 			
-		case 5: // Rotate 90 CCW and flip vertical
-			transform = CGAffineTransformMake(0, -1, -1, 0, height, width);
+		case 5: // Rotate 90° CCW and flip horizontal
+			transform = CGAffineTransformRotate(transform, -M_PI_2); // -90°
+			transform = CGAffineTransformTranslate(transform, -width, 0);
+			transform = CGAffineTransformTranslate(transform, 0, height);
+			transform = CGAffineTransformScale(transform, 1.0, -1.0);
 			break;
 			
-		case 6: // Rotate 90 CCW
-			transform = CGAffineTransformMake(0, -1, 1, 0, 0, width);
+		case 6: // Rotate 90° CW
+			transform = CGAffineTransformRotate(transform, M_PI_2); // 90°
+			transform = CGAffineTransformTranslate(transform, -height, 0);
 			break;
 			
-		case 7: // Rotate 90 CW and flip vertical
-			transform = CGAffineTransformMake(0, 1, 1, 0, 0, 0);
+		case 7: // Rotate 90° CW and flip horizontal
+			transform = CGAffineTransformRotate(transform, M_PI_2); // 90°
+			transform = CGAffineTransformTranslate(transform, -height, 0);
+			transform = CGAffineTransformTranslate(transform, 0, height);
+			transform = CGAffineTransformScale(transform, 1.0, -1.0);
 			break;
 			
-		case 8: // Rotate 90 CW
-			transform = CGAffineTransformMake(0, 1, -1, 0, height, 0);
+		case 8: // Rotate 90° CCW
+			transform = CGAffineTransformRotate(transform, -M_PI_2); // -90°
+			transform = CGAffineTransformTranslate(transform, -width, 0);
 			break;
 	}
 	
@@ -196,12 +210,10 @@ static CGAffineTransform createTransformForEXIFOrientation(NSInteger orientation
 	// Check if the image is displayed rotated by 90 degrees
 	if ([self isRotated90]) {
 		// If rotated, we need to get bounds and use the height
-		((void(*)(CGRect*, id, SEL))objc_msgSend_stret)(&bounds, self, boundsSelector);
-		return bounds.size.height / (double)imageWidth;
+		return [self bounds].size.height / (double)imageWidth;
 	} else {
 		// If not rotated, we need to get bounds and use the width
-		((void(*)(CGRect*, id, SEL))objc_msgSend_stret)(&bounds, self, boundsSelector);
-		return bounds.size.width / (double)imageWidth;
+		return [self bounds].size.width / (double)imageWidth;
 	}
 }
 
@@ -244,8 +256,8 @@ static CGAffineTransform createTransformForEXIFOrientation(NSInteger orientation
 	}
 	
 	// 4. Create the orientation transform using the scaled dimensions
-	CGAffineTransform transform = createTransformForEXIFOrientation(
-		exifOrientation, scaledWidthForTransform, scaledHeightForTransform
+	CGAffineTransform transform = createTransformForEXIF(
+		scaledWidthForTransform, scaledHeightForTransform, exifOrientation
 	);
 	
 	// 5. Apply the transform
