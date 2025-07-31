@@ -19,6 +19,8 @@
 @interface PQE_PVAnnotation : NSObject
 @end
 
+// Thread safety lock for instance variable modifications
+static NSLock *allReadableTypesModificationLock = nil;
 
 // Consolidated UTI configuration loaded from plist
 static NSDictionary *getUTIConfiguration() {
@@ -89,11 +91,17 @@ static NSDictionary *getUTIConfiguration() {
 - (void)addDocumentAtURL:(NSURL *)url ofType:(NSString *)type toLoadGroup:(id)loadGroup {
 	if ([[[self class] supportedTypes] containsObject:type]) {
 		// The original implementation will use the _allReadableTypes ivar to determine if a type is supported.
-
+		// Use lock to prevent race conditions when modifying instance variables
+		
+		[allReadableTypesModificationLock lock];
 		NSSet *originalIvar = ZKHookIvar(self, NSSet *, "_allReadableTypes");
-		ZKHookIvar(self, NSSet *, "_allReadableTypes") = [NSSet setWithObject:type];
-		ZKOrig(void, url, type, loadGroup);
-		ZKHookIvar(self, NSSet *, "_allReadableTypes") = originalIvar;
+		ZKHookIvar(self, NSSet *, "_allReadableTypes") = [NSSet setWithObject:type];	
+		@try {
+			ZKOrig(void, url, type, loadGroup);
+		} @finally {
+			ZKHookIvar(self, NSSet *, "_allReadableTypes") = originalIvar;
+			[allReadableTypesModificationLock unlock];
+		}
 		
 	} else {
 		ZKOrig(void, url, type, loadGroup);
@@ -354,6 +362,9 @@ static void registerUTIHandlers() {
 @implementation NSObject (PreviewPlus)
 
 + (void)load {
+	// Initialize thread safety lock
+	allReadableTypesModificationLock = [[NSLock alloc] init];
+	
 	//For supporting more file types
 	ZKSwizzle(PQE_PVDocumentController, PVDocumentController);
 	ZKSwizzle(PQE_PVWindowController, PVWindowController);
