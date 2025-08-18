@@ -69,7 +69,7 @@
 			<key>UTTypeDescription</key>
 			<string>XZ Archive</string>
 			<key>UTTypeIconFile</key>
-			<string>Generic</string>
+			<string>xz</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
