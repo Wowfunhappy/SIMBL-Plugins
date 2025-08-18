@@ -4,6 +4,8 @@
 #import <CoreServices/CoreServices.h>
 #import "ZKSwizzle.h"
 
+#define BUNDLE_IDENTIFIER @"Wowfunhappy.ArchiveUtilityPlus"
+
 static NSMutableDictionary *activeTasks = nil;
 
 static Class createDecompressorClass(const char *className, IMP decompressImp) {
@@ -21,7 +23,7 @@ static Class createDecompressorClass(const char *className, IMP decompressImp) {
 }
 
 static NSString *get7zPath() {
-	NSString *bundlePath = [[NSBundle bundleWithIdentifier:@"com.archiveutility.plus"] bundlePath];
+	NSString *bundlePath = [[NSBundle bundleWithIdentifier:BUNDLE_IDENTIFIER] bundlePath];
 	return [bundlePath stringByAppendingPathComponent:@"Contents/Resources/7zz"];
 }
 
@@ -142,7 +144,7 @@ static NSDictionary *readArchiveUtilityPreferences() {
 	NSMutableDictionary *options = [NSMutableDictionary dictionary];
 	CFStringRef appID = CFSTR("com.apple.archiveutility");
 	
-	for (NSString *key in @[@"dewarchive-move-after", @"dearchive-into", @"dearchive-reveal-after", 
+	for (NSString *key in @[@"dearchive-move-after", @"dearchive-into", @"dearchive-reveal-after", 
 							@"openIfSingleItem", @"dearchive-move-intermediate-after", @"dearchive-recursively"]) {
 		CFPropertyListRef value = CFPreferencesCopyAppValue((CFStringRef)key, appID);
 		if (value) {
